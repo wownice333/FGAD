@@ -1,12 +1,2 @@
-Average AUC:61.58$\pm$0.12
-Average AUCPR:61.419999999999995$\pm$0.21
-Average AUC:49.15$\pm$4.8500000000000005
-Average AUCPR:52.5$\pm$3.55
-Average AUC:58.75$\pm$0.0
-Average AUCPR:57.220000000000006$\pm$0.0
-Average AUC:55.05$\pm$0.0
-Average AUCPR:56.269999999999996$\pm$0.0
-Average AUC:55.05$\pm$0.0
-Average AUCPR:56.269999999999996$\pm$0.0
-Average AUC:55.05$\pm$0.0
-Average AUCPR:56.269999999999996$\pm$0.0
+Average AUC:62.87$\pm$1.52
+Average AUCPR:64.92$\pm$0.92
