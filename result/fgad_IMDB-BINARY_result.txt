@@ -1,0 +1,2 @@
+Average AUC:68.5$\pm$0.0
+Average AUCPR:77.66$\pm$0.0
