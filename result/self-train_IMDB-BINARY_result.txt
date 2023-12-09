@@ -1,2 +1,0 @@
-Average AUC:41.199999999999996$\pm$0.0
-Average AUCPR:48.36$\pm$0.0
