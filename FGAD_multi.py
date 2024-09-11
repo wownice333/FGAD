@@ -6,43 +6,10 @@ from pathlib import Path
 
 import torch
 
-import setupGC
-from training import *
+from  Utils import setupGC
+from model.training import *
 import warnings
 warnings.filterwarnings("ignore")
-
-
-def process_selftrain(c, args, clients, server, local_epoch):
-    print("Self-training ...")
-    AUC, AUPRC = run_selftrain_GC(clients, server, local_epoch, args.normal_class, c, args.nu, args.data_group)
-    return AUC, AUPRC
-
-
-def process_fedavg(c, args, clients, server):
-    print("\nDone setting up FedAvg devices.")
-    print("Running FedAvg ...")
-    AUC, AUPRC = run_fedavg(clients, server, args.num_rounds, args.local_epoch, args.normal_class, c, args.nu, args.data_group, samp = None)
-    return AUC, AUPRC
-
-
-def process_fedprox(c, args, clients, server, mu):
-    print("\nDone setting up FedProx devices.")
-    print("Running FedProx ...")
-    AUC, AUPRC = run_fedprox(clients, server, args.num_rounds, args.local_epoch, mu, args.normal_class,  c, args.nu, args.data_group, samp=None)
-    return AUC, AUPRC
-
-
-def process_gcfl(c, args, clients, server):
-    print("\nDone setting up GCFL devices.")
-    print("Running GCFL ...")
-    AUC, AUPRC = run_gcfl(clients, server, args.num_rounds, args.local_epoch, args.normal_class,  c, args.nu, args.data_group, EPS_1, EPS_2)
-    return AUC, AUPRC
-
-def process_fedstar(c, args, clients, server):
-    print("\nDone setting up FedStar devices.")
-    print("Running FedStar ...")
-    AUC, AUPRC = run_fedstar(args, clients, server, args.num_rounds, args.local_epoch, args.normal_class, c, args.nu, samp=None)
-    return AUC, AUPRC
 
 
 def process_fgad(clients, server, args):
@@ -111,8 +78,6 @@ if __name__ == '__main__':
                         help='Weight of the perturbator loss')
     parser.add_argument('--mu', type=float, default=0.001, metavar='N',
                         help='Weight of the Knowledge Distillation loss')
-    parser.add_argument('--algorithm', type=str, default='fgad', metavar='N',
-                        help='optional algorithm, including self-train, fedavg, fedprox, gcfl, fedstar')
     parser.add_argument('--nu', dest='nu', type=float,
                         help='', default=0.001)
     parser.add_argument('--n_rw', type=int, default=16,
@@ -122,21 +87,22 @@ if __name__ == '__main__':
     parser.add_argument('--type_init', help='the type of positional initialization',
                         type=str, default='rw_dg', choices=['rw', 'dg', 'rw_dg', 'ones'])
 
+
     try:
         args = parser.parse_args()
     except IOError as msg:
         parser.error(str(msg))
 
     seed_dataSplit = 123
-
+    percentage=0.8
     # set seeds
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
 
-    # args.device = "cuda" if torch.cuda.is_available() else "cpu"
-    args.device = "cpu"
+    args.device = "cuda" if torch.cuda.is_available() else "cpu"
+    # args.device = "cpu"
 
     EPS_1 = args.epsilon1
     EPS_2 = args.epsilon2
@@ -165,42 +131,15 @@ if __name__ == '__main__':
         suffix = "_degrs"
         print("Preparing data (one-hot degree features) ...")
 
-    splitedData, df_stats = setupGC.prepareData_multiDS(args.datapath, args.normal_class, args.data_group,
+    splitedData, df_stats = setupGC.prepareData_multiDS(args.datapath, args.normal_class, percentage, args.data_group,
                                                         args.batch_size, convert_x=args.convert_x, seed=seed_dataSplit)
     print("Done")
     repNum = args.num_repeat
     hist_AUC = []
     hist_AUCPR = []
     for epoch in range(repNum):
-        if args.algorithm == 'fedavg':
-            c = torch.randn(args.hidden * args.nlayer).to(args.device)
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices(splitedData, args)
-            AUC, AUPRC = process_fedavg(c, args, clients=copy.deepcopy(init_clients),
-                                        server=copy.deepcopy(init_server))
-        elif args.algorithm == 'fedprox':
-            c = torch.randn(args.hidden * args.nlayer).to(args.device)
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices(splitedData, args)
-            AUC, AUPRC = process_fedprox(c, args, clients=copy.deepcopy(init_clients),
-                                         server=copy.deepcopy(init_server), mu=0.01)
-        elif args.algorithm == 'gcfl':
-            c = torch.randn(args.hidden * args.nlayer).to(args.device)
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices(splitedData, args)
-            AUC, AUPRC = process_gcfl(c, args, clients=copy.deepcopy(init_clients),
-                                      server=copy.deepcopy(init_server))
-        elif args.algorithm == 'self_train':
-            c = torch.randn(args.hidden * args.nlayer).to(args.device)
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices(splitedData, args)
-            AUC, AUPRC = process_selftrain(c, args, clients=copy.deepcopy(init_clients),
-                                           server=copy.deepcopy(init_server), local_epoch=100)
-        elif args.algorithm == 'fedstar':
-            args.n_se = args.n_rw + args.n_dg
-            c = torch.randn(args.hidden).to(args.device)
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices_fedstar(splitedData, args)
-            AUC, AUPRC = process_fedstar(c, args, clients=copy.deepcopy(init_clients),
-                                         server=copy.deepcopy(init_server))
-        elif args.algorithm == 'fgad':
-            init_clients, init_server, init_idx_clients = setupGC.setup_devices_fgad(splitedData, args)
-            AUC, AUPRC = process_fgad(clients=copy.deepcopy(init_clients),
+        init_clients, init_server, init_idx_clients = setupGC.setup_devices_fgad(splitedData, args)
+        AUC, AUPRC = process_fgad(clients=copy.deepcopy(init_clients),
                                       server=copy.deepcopy(init_server), args=args)
         hist_AUC.append(AUC)
         hist_AUCPR.append(AUPRC)
